@@ -3,7 +3,7 @@ from flask import render_template, url_for, request, redirect, flash
 from datetime import date, datetime
 from app import db
 from app.models import Expense
-import sqlalchemy as sa
+from sqlalchemy import func
 
 CATEGORIES = ['Food', 'Transport', 'Rent', 'Utilities', 'Health']
 
@@ -43,9 +43,23 @@ def index():
 
     expenses = q.order_by(Expense.date.desc(), Expense.id.desc()).all()
     total = round(sum(e.amount for e in expenses), 2)
+
+    cat_q = db.session.query(Expense.category, func.sum(Expense.amount))
+    
+    if start_date:
+        cat_q = cat_q.filter(Expense.date >= start_date)
+    if end_date:
+        cat_q = cat_q.filter(Expense.date <= end_date)
+    if selected_category:
+        cat_q = cat_q.filter(Expense.date == selected_category)
+
+    cat_rows = cat_q.group_by(Expense.category).all()
+    cat_labels = [c for c, _ in cat_rows]
+    cat_values = [round(float(s or 0), 2) for _, s in cat_rows]
+
     return render_template(
         'index.html', expenses=expenses, categories=CATEGORIES, total=total, start_str=start_str, end_str=end_str, today=date.today().isoformat(),
-        selected_category=selected_category)
+        selected_category=selected_category, cat_values=cat_values, cat_labels=cat_labels)
 
 
 @app.route("/add", methods=['POST'])
