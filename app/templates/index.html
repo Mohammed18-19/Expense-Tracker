@@ -4,23 +4,6 @@
 
 {% block content %}
 
-<!-- Flash messages -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    <div class="space-y-2 mb-4">
-      {% for category, message in messages %}
-        <div class="rounded-xl px-4 py-3 text-sm
-          {% if category == 'success' %} bg-emerald-500/10 text-emerald-300 border border-emerald-400/20
-          {% elif category == 'error' %} bg-rose-500/10 text-rose-300 border border-rose-400/20
-          {% else %} bg-slate-800 text-slate-200 border border-slate-700
-          {% endif %}">
-          {{ message }}
-        </div>
-      {% endfor %}
-    </div>
-  {% endif %}
-{% endwith %}
-
 <h1 class="text-3xl font-semibold mb-2">Dashboard</h1>
 <p class="text-slate-400 mb-6">
   Track spending, filter by date/category, and visualize instantly.
@@ -176,8 +159,11 @@
 
 {% block body_end %}
 <script>
+
 const catLabels = {{ (cat_labels or []) | tojson }};
 const catValues = {{ (cat_values or []) | tojson }};
+const dayLabels = {{ (day_labels or []) | tojson }};
+const dayValues = {{ (day_values or []) | tojson }};
 
 if (document.getElementById('catChart')){
   const catCtx = document.getElementById('catChart').getContext('2d');
@@ -193,6 +179,40 @@ if (document.getElementById('catChart')){
     options: { plugins: { legend: { labels: { color: '#cbd5e1' } } } }
   });
 }
+
+
+if (document.getElementById('dayChart')) {
+  const dayCtx = document.getElementById('dayChart').getContext('2d');
+  new Chart(dayCtx, {
+    type: 'bar',
+    data: {
+      labels: dayLabels,
+      datasets: [{
+        label: 'Total',
+        data: dayValues,
+        backgroundColor: '#38bdf8'
+      }]
+    },
+    options: {
+      plugins: {
+        legend: {
+          labels: { color: '#cbd5e1' }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#cbd5e1' },
+          grid: { color: '#334155' }
+        },
+        y: {
+          ticks: { color: '#cbd5e1' },
+          grid: { color: '#334155' }
+        }
+      }
+    }
+  });
+}
+
 
 // Optionally, you can also initialize 'dayChart' here similarly
 </script>
