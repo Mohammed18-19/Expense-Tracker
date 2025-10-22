@@ -1,6 +1,6 @@
 from app import app
-from flask import render_template, url_for, request, redirect, flash
-from datetime import date, datetime
+from flask import render_template, url_for, request, redirect, flash, Response
+from datetime import date, datetime, date as dt_date
 from app import db
 from app.models import Expense
 from sqlalchemy import func
@@ -42,7 +42,7 @@ def index():
 
 
     expenses = q.order_by(Expense.date.desc(), Expense.id.desc()).all()
-    total = round(sum(e.amount for e in expenses), 2)
+    total = float(round(sum(e.amount for e in expenses), 2))
 
 # pie chart
     cat_q = db.session.query(Expense.category, func.sum(Expense.amount))
@@ -118,3 +118,49 @@ def delete(expense_id):
     db.session.commit()
     flash('Expense deleted', 'success')
     return redirect(url_for('index'))
+
+
+@app.route("/export.csv")
+def export_csv():
+    start_str = (request.args.get("start") or "").strip()
+    end_str = (request.args.get("end") or "").strip()
+    selected_category = (request.args.get("category") or "").strip()
+
+    start_date = parse_date_or_none(start_str)
+    end_date = parse_date_or_none(end_str)
+
+    q = Expense.query
+    if start_date:
+        q = q.filter(Expense.date >= start_date)
+    if end_date:
+        q = q.filter(Expense.date <= end_date)
+    
+    if selected_category:
+        q = q.filter(Expense.category == selected_category)
+
+    expenses = q.order_by(Expense.date, Expense.id).all()
+    
+    lines = ["date, description, category, amount"]
+
+    for e in expenses:
+        lines.append(f"{e.date.isoformat()}, {e.description}, {e.category}, {float(e.amount):.2f}")
+    csv_data = "\n".join(lines)
+
+    fname_start = start_str or "all"
+    fname_end = end_str or "all"
+    filename = f"expenses_{fname_start}_to_{fname_end}.csv"
+
+    return Response (
+        csv_data,
+        headers = {
+            "Content-Type": "text/csv",
+            "Content-Description": f"attachement; filename={filename}"
+
+        }
+    )
+
+@app.route("/edit/<int:expense_id>", methods=['GET'])
+def edit(expense_id):
+    e = Expense.query.get_or_404(expense_id)
+
+    return render_template("edit.html", expense=e, categories=CATEGORIES, today=dt_date.today().isoformat())
